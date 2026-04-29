@@ -1,82 +1,61 @@
-# DWH-DIGSILENT (Windows + Python 2.7)
+# DWH-DIGSILENT
 
-ეს პროექტი არის **Windows local** გაშვებისთვის და გათვალისწინებულია **Python 2.7** გარემოზე.
+პროექტში არის ორი რეჟიმი:
 
-## შენიშვნა Colab-ზე
+1. **main.py** — Python 3 ვერსია (არსებული მოდულებით)
+2. **legacy_py27.py** — Python 2.7 legacy ვერსია, მხოლოდ built-in ბიბლიოთეკებით
 
-თქვენი მოთხოვნის მიხედვით, Colab საერთოდ არ გამოიყენება. პროექტი სრულად local Windows flow-ზეა.
+---
 
-## ფაილები
+## Legacy Python 2.7 usage (pip-ის გარეშე)
 
-- `main.py` — მთავარი runner (API + fallback)
-- `src/dwh_client.py` — DWH API კლიენტი და local CSV reader
-- `src/transform.py` — `transform_dataframe(df)` ტრანსფორმაცია
-- `src/export.py` — Desktop-ზე შედეგის შენახვა
-- `requirements.txt` — Python 2.7 თავსებადი პაკეტები
-- `run.bat` — ორჯერ დაკლიკებით გაშვება
-- `1.rar` — reference არქივი
+თუ კომპიუტერზე გაქვთ მხოლოდ Python 2.7 და არაფრის დაყენება არ შეიძლება, გამოიყენეთ `legacy_py27.py`.
 
-## Python 2.7 setup
+### რა იყენებს legacy ვერსია
 
-1. გახსენით CMD/PowerShell პროექტის ფოლდერში.
-2. დააყენეთ პაკეტები:
-   ```bash
-   pip install -r requirements.txt
-   ```
+მხოლოდ Python 2.7 built-in modules:
+- `urllib2`
+- `csv`
+- `os`
+- `sys`
+- `datetime`
+- `codecs`
 
-## API key (hardcode-ის გარეშე)
+`pandas`, `requests` და სხვა გარე პაკეტები **არ გამოიყენება**.
 
-`DWH_API_KEY` უნდა იყოს environment variable.
+### 1) API key დაყენება (აუცილებელია)
 
-### CMD (მიმდინარე ფანჯარა)
+CMD-ში:
 ```cmd
-set DWH_API_KEY=your_real_key
+set DWH_API_KEY=აქ_ჩასვას_API_KEY
 ```
 
-### PowerShell (მიმდინარე სესია)
+PowerShell-ში:
 ```powershell
-$env:DWH_API_KEY="your_real_key"
+$env:DWH_API_KEY="აქ_ჩასვას_API_KEY"
 ```
 
-### PowerShell (მუდმივად)
-```powershell
-setx DWH_API_KEY "your_real_key"
+### 2) გაშვება
+
+```cmd
+python legacy_py27.py
 ```
 
-## გაშვება
+ან ორჯერ დაკლიკებით:
+- გაუშვით `run_py27.bat`
 
-### ტერმინალიდან
-```bash
-python main.py
-```
+### 3) როგორ მუშაობს
 
-### Double-click
-- გაუშვით `run.bat`.
+1. ცდილობს API-დან CSV-ის წამოღებას (`urllib2`-ით).
+2. API თუ ჩავარდა (TLS/HTTPS/DNS/network), ავტომატურად გადადის fallback რეჟიმში და გთხოვთ local CSV path-ს.
+3. ამოწმებს სვეტებს: `name`, `P`, `Q`, `type`.
+4. `P` და `Q` გადაყავს `float`-ში; არავალიდური მნიშვნელობები ხდება `0.0`.
+5. ინახავს შედეგს Desktop-ზე სახელით:
+   `DIgSILENT_Table_YYYY_MM_DD.csv`
 
-## fallback რეჟიმი
+---
 
-- პროგრამა ჯერ ცდილობს API-დან CSV-ს წამოღებას.
-- თუ API არ იმუშავებს (DNS/network/401/403/timeout/სხვა), პროგრამა გთხოვთ local CSV ფაილის path-ს.
-- ამ ფაილზე გაგრძელდება ტრანსფორმაცია.
+## Python 3 main.py (დატოვებულია)
 
-## ტრანსფორმაციის წესები
-
-საჭირო სვეტები:
-- `name`
-- `P`
-- `Q`
-- `type`
-
-ქცევა:
-- თუ სვეტები აკლია → მკაფიო შეცდომა.
-- `P/Q` გადაიყვანება numeric-ზე.
-- არავალიდური `P/Q` მნიშვნელობები ხდება `0`.
-- ნაჩვენებია რამდენი არავალიდური `P/Q` გასწორდა.
-
-## შედეგი
-
-საბოლოო ფაილი ინახება Desktop-ზე:
-
-`DIgSILENT_Table_YYYY_MM_DD.csv`
-
-Encoding: `utf-8-sig`
+`main.py` დარჩენილია Python 3 flow-სთვის (როგორც ითხოვეთ).
+თუ Python 2.7 გაქვთ, გამოიყენეთ მხოლოდ `legacy_py27.py`.
