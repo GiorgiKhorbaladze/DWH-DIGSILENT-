@@ -34,10 +34,19 @@ def validate_input(inp: dict[str, Any]) -> tuple[bool, list[str], list[str]]:
     else:
         errors.append(f"schema_version '{schema_version}' unsupported")
 
-    assets = inp.get("assets") or []
-    asset_by_id = {asset.get("id"): asset for asset in assets if asset.get("id")}
+    registry = inp.get("asset_registry") or {}
+    registry_assets = registry.get("assets") if isinstance(registry, dict) else None
+    assets = registry_assets if isinstance(registry_assets, list) else inp.get("assets") or []
+    asset_by_id = {_asset_id(asset): asset for asset in assets if _asset_id(asset)}
     if not assets:
-        warnings.append("assets list is empty")
+        warnings.append("asset registry/assets list is empty")
+
+    registry_total = _registry_expected_total(registry)
+    if registry_total is not None and round(registry_total, 3) != 4770.194:
+        warnings.append(
+            f"asset_registry expected_total_installed_capacity_mw is {registry_total:.3f}; "
+            "2026 demo reference is 4770.194 MW"
+        )
 
     maintenance = inp.get("maintenance", [])
     if maintenance is None:
@@ -112,7 +121,7 @@ def _validate_maintenance_events(
             elif float(available_capacity_mw) < 0:
                 errors.append(f"{prefix}.available_capacity_mw must be >= 0")
             elif pmax is not None and float(available_capacity_mw) > pmax:
-                errors.append(f"{prefix}.available_capacity_mw exceeds asset pmax_mw ({pmax:g})")
+                errors.append(f"{prefix}.available_capacity_mw exceeds asset installed_capacity_mw/pmax ({pmax:g})")
 
         if availability_factor is not None:
             if not _is_number(availability_factor):
@@ -152,10 +161,25 @@ def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
 
+def _asset_id(asset: Any) -> str | None:
+    if not isinstance(asset, dict):
+        return None
+    value = asset.get("asset_id", asset.get("id"))
+    return str(value) if value else None
+
+
+def _registry_expected_total(registry: Any) -> float | None:
+    if not isinstance(registry, dict):
+        return None
+    metadata = registry.get("metadata") or {}
+    value = metadata.get("expected_total_installed_capacity_mw")
+    return float(value) if _is_number(value) else None
+
+
 def _asset_pmax(asset: dict[str, Any] | None) -> float | None:
     if not asset:
         return None
-    for key in ("pmax_mw", "pmax", "pmax_installed", "power_mw"):
+    for key in ("installed_capacity_mw", "pmax_mw", "pmax", "pmax_installed", "power_mw"):
         value = asset.get(key)
         if _is_number(value):
             return float(value)

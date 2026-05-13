@@ -18,13 +18,34 @@ HTML_PATH = ROOT / "html" / "PowerSim_v4.html"
 def _base_input() -> dict:
     return {
         "metadata": {"schema_version": SCHEMA_VERSION, "model_version": "PowerSim v4.0"},
-        "assets": [{"id": "enguri_hpp", "name": "Enguri HPP", "pmax_mw": 1300}],
+        "asset_registry": {
+            "metadata": {
+                "registry_id": "demo_asset_registry_2026",
+                "expected_asset_count": 131,
+                "expected_total_installed_capacity_mw": 4770.1935,
+            },
+            "assets": [
+                {
+                    "asset_id": "hydro_res_006",
+                    "name_ge": "ენგურჰესი",
+                    "powersim_type": "hydro_reg",
+                    "installed_capacity_mw": 1300,
+                }
+            ],
+        },
         "study_horizon": {"start": "2026-01-01T00:00:00", "end": "2026-12-31T23:00:00"},
     }
 
 
 def test_old_json_without_maintenance_still_loads() -> None:
-    ok, errors, _warnings = validate_input(_base_input())
+    legacy = {
+        "metadata": {"schema_version": SCHEMA_VERSION, "model_version": "PowerSim v4.0"},
+        "assets": [{"id": "legacy_enguri", "name": "Enguri HPP", "pmax_mw": 1300}],
+        "study_horizon": {"start": "2026-01-01T00:00:00", "end": "2026-12-31T23:00:00"},
+    }
+
+    ok, errors, _warnings = validate_input(legacy)
+
     assert ok, errors
 
 
@@ -32,7 +53,7 @@ def test_json_with_maintenance_events_validates_and_round_trips() -> None:
     data = _base_input()
     data["maintenance"] = [
         {
-            "asset_id": "enguri_hpp",
+            "asset_id": "hydro_res_006",
             "start": "2026-04-01T00:00:00",
             "end": "2026-04-10T23:00:00",
             "event_type": "planned_maintenance",
@@ -47,14 +68,14 @@ def test_json_with_maintenance_events_validates_and_round_trips() -> None:
     ok, errors, _warnings = validate_input(decoded)
 
     assert ok, errors
-    assert decoded["maintenance"][0]["asset_id"] == "enguri_hpp"
+    assert decoded["maintenance"][0]["asset_id"] == "hydro_res_006"
 
 
 def test_maintenance_validation_catches_required_errors_and_warnings() -> None:
     data = _base_input()
     data["maintenance"] = [
         {
-            "asset_id": "enguri_hpp",
+            "asset_id": "hydro_res_006",
             "start": "2026-05-02T00:00:00",
             "end": "2026-05-01T00:00:00",
             "event_type": "planned_maintenance",
@@ -68,14 +89,14 @@ def test_maintenance_validation_catches_required_errors_and_warnings() -> None:
             "available_capacity_mw": 1400,
         },
         {
-            "asset_id": "enguri_hpp",
+            "asset_id": "hydro_res_006",
             "start": "2026-07-01T00:00:00",
             "end": "2026-07-05T00:00:00",
             "event_type": "partial_derating",
             "available_capacity_mw": 1200,
         },
         {
-            "asset_id": "enguri_hpp",
+            "asset_id": "hydro_res_006",
             "start": "2026-07-04T00:00:00",
             "end": "2026-07-06T00:00:00",
             "event_type": "forced_outage",
@@ -95,7 +116,7 @@ def test_available_capacity_cannot_exceed_asset_pmax() -> None:
     data = _base_input()
     data["maintenance"] = [
         {
-            "asset_id": "enguri_hpp",
+            "asset_id": "hydro_res_006",
             "start": "2026-04-01T00:00:00",
             "end": "2026-04-02T00:00:00",
             "event_type": "partial_derating",
@@ -106,7 +127,7 @@ def test_available_capacity_cannot_exceed_asset_pmax() -> None:
     ok, errors, _warnings = validate_input(data)
 
     assert not ok
-    assert any("exceeds asset pmax" in err for err in errors)
+    assert any("exceeds asset installed_capacity_mw/pmax" in err for err in errors)
 
 
 def test_html_exports_maintenance_contract_surface() -> None:
@@ -116,6 +137,11 @@ def test_html_exports_maintenance_contract_surface() -> None:
     assert re.search(r"maintenance\s*:\s*STATE\.maintenance", text)
     assert "function importInputJSON" in text
     assert "validateMaintenance" in text
+    assert "DEMO_ASSET_REGISTRY" in text
+    assert "expected_total_installed_capacity_mw:4770.1935" in text
+    assert "registryAssets().map" in text
+    assert "../samples/demo_asset_registry_2026.json" in text
+    assert "installed_capacity_mw / pmax" in text
     assert "გეგმური რემონტი" in text
     assert "ავარიული გათიშვა" in text
     assert "ნაწილობრივი შეზღუდვა" in text
