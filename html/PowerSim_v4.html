@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="ka" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PowerSim v4</title>
+  <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --text: #172033;
+      --muted: #5f6b7a;
+      --border: #d9dee8;
+      --accent: #1d72d2;
+      --warning-bg: #fff8e1;
+      --warning-text: #654b00;
+      color-scheme: light;
+    }
+
+    html[data-theme="dark"] {
+      --bg: #101723;
+      --panel: #172033;
+      --text: #eef3fb;
+      --muted: #aab6c6;
+      --border: #334155;
+      --accent: #6aa9ff;
+      --warning-bg: #3a2f08;
+      --warning-text: #ffe69a;
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .toolbar,
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 2px 10px rgb(15 23 42 / 8%);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .toolbar-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    button,
+    select,
+    input[type="number"],
+    textarea {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    button {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--text);
+    }
+
+    select:disabled {
+      color: var(--muted);
+      opacity: 1;
+    }
+
+    .table-scroll {
+      overflow-x: auto;
+      width: 100%;
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    table {
+      width: 100%;
+      min-width: 840px;
+      border-collapse: collapse;
+      background: var(--panel);
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .profile-select {
+      min-width: 220px;
+      max-width: 280px;
+    }
+
+    .not-used {
+      display: inline-block;
+      min-width: 140px;
+      color: var(--muted);
+    }
+
+    .warnings {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 10px;
+      background: var(--warning-bg);
+      color: var(--warning-text);
+    }
+
+    .warnings:empty {
+      display: none;
+    }
+
+    textarea {
+      box-sizing: border-box;
+      min-height: 180px;
+      width: 100%;
+      margin-top: 12px;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="toolbar" aria-label="PowerSim controls">
+      <div class="toolbar-group">
+        <label for="languageSelect" data-i18n="language">ენა</label>
+        <select id="languageSelect">
+          <option value="ka">ქართული</option>
+          <option value="en">English</option>
+        </select>
+        <label for="themeSelect" data-i18n="theme">თემა</label>
+        <select id="themeSelect">
+          <option value="light" data-i18n="light">ღია</option>
+          <option value="dark" data-i18n="dark">მუქი</option>
+        </select>
+        <label for="horizonInput" data-i18n="horizon">ჰორიზონტი (სთ)</label>
+        <input id="horizonInput" type="number" min="1" step="1" value="24">
+      </div>
+      <div class="toolbar-group">
+        <button id="exportJsonButton" type="button" data-i18n="exportJson">JSON ექსპორტი</button>
+        <button id="importJsonButton" type="button" class="secondary" data-i18n="importJson">JSON იმპორტი</button>
+      </div>
+    </div>
+
+    <section class="panel" aria-labelledby="generatorTableTitle">
+      <h1 id="generatorTableTitle" data-i18n="generatorTable">გენერატორები / სადგურები</h1>
+      <p data-i18n="profileHelp">პროფილის არჩევა ამ ეტაპზე აქტიურია მხოლოდ ქარის, მზის და run-of-river ჰიდრო აქტივებისთვის.</p>
+      <p><strong data-i18n="installedTotal">დადგმული სიმძლავრე სულ</strong>: <span id="installedCapacityTotal">4770.194 MW</span></p>
+      <div class="table-scroll">
+        <table id="generatorTable">
+          <thead>
+            <tr>
+              <th data-i18n="assetName">სახელი</th>
+              <th data-i18n="assetType">ტიპი</th>
+              <th data-i18n="pmax">Pmax MW</th>
+              <th data-i18n="profile">პროფილი</th>
+            </tr>
+          </thead>
+          <tbody id="assetTableBody"></tbody>
+        </table>
+      </div>
+      <div id="warnings" class="warnings" role="status" aria-live="polite"></div>
+      <label for="jsonText" data-i18n="jsonWorkspace">JSON სამუშაო არე</label>
+      <textarea id="jsonText" spellcheck="false"></textarea>
+    </section>
+  </main>
+
+  <script>
+    const PROFILE_BINDABLE_TYPES = new Set(["wind", "solar", "hydro_ror"]);
+    const PROFILE_TYPES_BY_ASSET_TYPE = {
+      wind: new Set(["wind_generation_profile"]),
+      solar: new Set(["solar_generation_profile"]),
+      hydro_ror: new Set(["hydro_ror_availability_profile", "hydro_ror_inflow_profile"]),
+    };
+    const REGISTRY_TOTAL_REFERENCE_MW = 4770.194;
+
+    const demoAssetRegistry2026 = {
+      registry_id: "powersim_demo_asset_registry_2026",
+      total_installed_capacity_mw: REGISTRY_TOTAL_REFERENCE_MW,
+      assets: [
+        { asset_id: "wind_demo_2026", powersim_type: "wind", installed_capacity_mw: 500.125 },
+        { asset_id: "solar_demo_2026", powersim_type: "solar", installed_capacity_mw: 550.245 },
+        { asset_id: "hydro_ror_demo_2026", powersim_type: "hydro_ror", installed_capacity_mw: 620.321 },
+        { asset_id: "hydro_reg_demo_2026", powersim_type: "hydro_reg", installed_capacity_mw: 1400.503 },
+        { asset_id: "thermal_demo_2026", powersim_type: "thermal", installed_capacity_mw: 1200 },
+        { asset_id: "bess_demo_2026", powersim_type: "bess", installed_capacity_mw: 100 },
+        { asset_id: "import_demo_2026", powersim_type: "import", installed_capacity_mw: 399 },
+      ],
+    };
+
+    const i18n = {
+      ka: {
+        language: "ენა",
+        theme: "თემა",
+        light: "ღია",
+        dark: "მუქი",
+        horizon: "ჰორიზონტი (სთ)",
+        exportJson: "JSON ექსპორტი",
+        importJson: "JSON იმპორტი",
+        generatorTable: "გენერატორები / სადგურები",
+        profileHelp: "პროფილის არჩევა ამ ეტაპზე აქტიურია მხოლოდ ქარის, მზის და run-of-river ჰიდრო აქტივებისთვის.",
+        installedTotal: "დადგმული სიმძლავრე სულ",
+        assetName: "აქტივის ID",
+        assetType: "ტიპი",
+        pmax: "Pmax MW",
+        profile: "პროფილი",
+        noProfile: "ნაგულისხმევი / პროფილის გარეშე",
+        notUsed: "არ გამოიყენება",
+        jsonWorkspace: "JSON სამუშაო არე",
+        warningsTitle: "გაფრთხილებები:",
+        missingProfile: "აქტივს არჩეული აქვს პროფილი, რომელიც ჩატვირთულ პროფილებში არ მოიძებნა",
+        shortProfile: "არჩეული პროფილის სიგრძე არჩეულ ჰორიზონტზე მოკლეა",
+        incompatibleProfile: "არჩეული პროფილის ტიპი აქტივის ტიპთან შეუთავსებელია",
+      },
+      en: {
+        language: "Language",
+        theme: "Theme",
+        light: "Light",
+        dark: "Dark",
+        horizon: "Horizon (h)",
+        exportJson: "Export JSON",
+        importJson: "Import JSON",
+        generatorTable: "Generators / Stations",
+        profileHelp: "Profile binding is active only for wind, solar and run-of-river hydro assets at this stage.",
+        installedTotal: "System installed capacity total",
+        assetName: "Asset ID",
+        assetType: "Type",
+        pmax: "Pmax MW",
+        profile: "Profile",
+        noProfile: "Default / no profile",
+        notUsed: "Not used",
+        jsonWorkspace: "JSON workspace",
+        warningsTitle: "Warnings:",
+        missingProfile: "Asset selected a profile_id that was not found in loaded profiles",
+        shortProfile: "Selected profile length is shorter than the selected horizon",
+        incompatibleProfile: "Selected profile type is incompatible with asset type",
+      },
+    };
+
+    function normalizeRegistryAsset(asset) {
+      const powersimType = asset.powersim_type || asset.type || "";
+      const normalized = {
+        ...asset,
+        asset_id: asset.asset_id || asset.id,
+        powersim_type: powersimType,
+      };
+      if (normalized.installed_capacity_mw === undefined && normalized.pmax !== undefined) {
+        normalized.installed_capacity_mw = normalized.pmax;
+      }
+      if (!isProfileBindableAsset(powersimType) || !normalized.profile_id) {
+        delete normalized.profile_id;
+      }
+      return normalized;
+    }
+
+    function loadInitialAssetRegistry() {
+      return window.PowerSimDemoAssetRegistry2026 || window.POWERSIM_DEMO_ASSET_REGISTRY_2026 || demoAssetRegistry2026;
+    }
+
+    const initialAssetRegistry = normalizeImportedRegistry(loadInitialAssetRegistry());
+
+    const state = {
+      language: "ka",
+      theme: "light",
+      horizonHours: 24,
+      assetRegistry: initialAssetRegistry,
+      assets: initialAssetRegistry.assets.map(normalizeRegistryAsset),
+      profiles: [
+        { id: "wind_hourly_default", name: "Wind hourly default", type: "wind_generation_profile", values: Array(24).fill(0.45) },
+        { id: "solar_hourly_default", name: "Solar hourly default", type: "solar_generation_profile", values: Array(24).fill(0.35) },
+        { id: "ror_availability_default", name: "ROR availability default", type: "hydro_ror_availability_profile", values: Array(24).fill(0.8) },
+        { id: "ror_inflow_default", name: "ROR inflow default", type: "hydro_ror_inflow_profile", values: Array(24).fill(10) },
+      ],
+    };
+
+    function text(key) {
+      return i18n[state.language][key] || i18n.en[key] || key;
+    }
+
+    function assetType(asset) {
+      return asset.powersim_type || asset.type || "";
+    }
+
+    function assetId(asset, index) {
+      return asset.asset_id || asset.id || `asset_${index + 1}`;
+    }
+
+    function installedCapacity(asset) {
+      return Number(asset.installed_capacity_mw ?? asset.pmax ?? asset.pmax_installed ?? 0);
+    }
+
+    function isProfileBindableAsset(type) {
+      return PROFILE_BINDABLE_TYPES.has(type);
+    }
+
+    function profileTypesForAsset(type) {
+      return PROFILE_TYPES_BY_ASSET_TYPE[type] || new Set();
+    }
+
+    function profileOptionsForAsset(type) {
+      const allowedTypes = profileTypesForAsset(type);
+      return state.profiles.filter((profile) => allowedTypes.has(profile.type));
+    }
+
+    function findProfile(profileId) {
+      return state.profiles.find((profile) => profile.id === profileId);
+    }
+
+    function profileValueLength(profile) {
+      if (Array.isArray(profile.values)) return profile.values.length;
+      if (Array.isArray(profile.data)) return profile.data.length;
+      if (Array.isArray(profile.hours)) return profile.hours.length;
+      return 0;
+    }
+
+    function registryInstalledCapacityTotal() {
+      const registryTotal = Number(state.assetRegistry?.total_installed_capacity_mw);
+      if (Number.isFinite(registryTotal)) return registryTotal;
+      return state.assets.reduce((total, asset) => total + installedCapacity(asset), 0);
+    }
+
+    function formatMw(value) {
+      return `${Number(value).toFixed(3)} MW`;
+    }
+
+    function updateInstalledCapacityDisplay() {
+      document.getElementById("installedCapacityTotal").textContent = formatMw(registryInstalledCapacityTotal());
+    }
+
+    function updateLocalization() {
+      document.documentElement.lang = state.language;
+      document.querySelectorAll("[data-i18n]").forEach((element) => {
+        element.textContent = text(element.dataset.i18n);
+      });
+      updateInstalledCapacityDisplay();
+    }
+
+    function renderTable() {
+      const body = document.getElementById("assetTableBody");
+      body.innerHTML = "";
+
+      state.assets.forEach((asset, index) => {
+        const type = assetType(asset);
+        const id = assetId(asset, index);
+        const row = document.createElement("tr");
+        row.dataset.assetId = id;
+
+        const nameCell = document.createElement("td");
+        nameCell.textContent = id;
+
+        const typeCell = document.createElement("td");
+        typeCell.textContent = type;
+
+        const pmaxCell = document.createElement("td");
+        pmaxCell.textContent = installedCapacity(asset).toFixed(3);
+
+        const profileCell = document.createElement("td");
+        if (isProfileBindableAsset(type)) {
+          const select = document.createElement("select");
+          select.className = "profile-select";
+          select.dataset.assetIndex = String(index);
+          select.setAttribute("aria-label", `${text("profile")} - ${id}`);
+
+          const defaultOption = document.createElement("option");
+          defaultOption.value = "";
+          defaultOption.textContent = text("noProfile");
+          select.appendChild(defaultOption);
+
+          profileOptionsForAsset(type).forEach((profile) => {
+            const option = document.createElement("option");
+            option.value = profile.id;
+            option.textContent = profile.name ? `${profile.name} (${profile.id})` : profile.id;
+            select.appendChild(option);
+          });
+
+          select.value = asset.profile_id || "";
+          select.addEventListener("change", (event) => {
+            const selectedProfileId = event.target.value;
+            if (selectedProfileId) {
+              asset.profile_id = selectedProfileId;
+            } else {
+              delete asset.profile_id;
+            }
+            validateProfileBindings();
+          });
+          profileCell.appendChild(select);
+        } else {
+          const disabled = document.createElement("select");
+          disabled.className = "profile-select";
+          disabled.disabled = true;
+          disabled.setAttribute("aria-label", `${text("profile")} - ${text("notUsed")}`);
+          const option = document.createElement("option");
+          option.textContent = text("notUsed");
+          disabled.appendChild(option);
+          profileCell.appendChild(disabled);
+        }
+
+        row.append(nameCell, typeCell, pmaxCell, profileCell);
+        body.appendChild(row);
+      });
+
+      updateInstalledCapacityDisplay();
+      validateProfileBindings();
+    }
+
+    function validateProfileBindings() {
+      const warnings = [];
+      state.assets.forEach((asset, index) => {
+        const type = assetType(asset);
+        if (!isProfileBindableAsset(type) || !asset.profile_id) return;
+
+        const profile = findProfile(asset.profile_id);
+        const label = assetId(asset, index);
+        if (!profile) {
+          warnings.push(`${label}: ${text("missingProfile")} (${asset.profile_id}).`);
+          return;
+        }
+
+        if (!profileTypesForAsset(type).has(profile.type)) {
+          warnings.push(`${label}: ${text("incompatibleProfile")} (${profile.type}).`);
+        }
+
+        if (profileValueLength(profile) < state.horizonHours) {
+          warnings.push(`${label}: ${text("shortProfile")} (${profileValueLength(profile)} < ${state.horizonHours}).`);
+        }
+      });
+
+      const container = document.getElementById("warnings");
+      if (warnings.length === 0) {
+        container.innerHTML = "";
+        return;
+      }
+      const listItems = warnings.map((warning) => `<li>${escapeHtml(warning)}</li>`).join("");
+      container.innerHTML = `<strong>${text("warningsTitle")}</strong><ul>${listItems}</ul>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function normalizeImportedAsset(asset) {
+      return normalizeRegistryAsset(asset);
+    }
+
+    function normalizeImportedRegistry(registry) {
+      return {
+        ...registry,
+        assets: Array.isArray(registry.assets) ? registry.assets.map(normalizeRegistryAsset) : [],
+      };
+    }
+
+    function buildExportModel() {
+      return {
+        horizonHours: state.horizonHours,
+        assetRegistry: state.assetRegistry,
+        assets: state.assets.map((asset) => {
+          const exported = { ...asset };
+          if (!isProfileBindableAsset(assetType(exported)) || !exported.profile_id) {
+            delete exported.profile_id;
+          }
+          return exported;
+        }),
+        profiles: state.profiles,
+      };
+    }
+
+    function exportJson() {
+      document.getElementById("jsonText").value = JSON.stringify(buildExportModel(), null, 2);
+    }
+
+    function importJsonFromText() {
+      const parsed = JSON.parse(document.getElementById("jsonText").value);
+      if (parsed.assetRegistry && Array.isArray(parsed.assetRegistry.assets)) {
+        state.assetRegistry = normalizeImportedRegistry(parsed.assetRegistry);
+      }
+      if (Array.isArray(parsed.assets)) {
+        state.assets = parsed.assets.map(normalizeImportedAsset);
+      } else if (Array.isArray(state.assetRegistry?.assets)) {
+        state.assets = state.assetRegistry.assets.map(normalizeRegistryAsset);
+      }
+      if (Array.isArray(parsed.profiles)) {
+        state.profiles = parsed.profiles;
+      }
+      if (Number.isFinite(Number(parsed.horizonHours)) && Number(parsed.horizonHours) > 0) {
+        state.horizonHours = Number(parsed.horizonHours);
+        document.getElementById("horizonInput").value = String(state.horizonHours);
+      }
+      renderTable();
+    }
+
+    function initialize() {
+      document.getElementById("languageSelect").addEventListener("change", (event) => {
+        state.language = event.target.value;
+        updateLocalization();
+        renderTable();
+      });
+
+      document.getElementById("themeSelect").addEventListener("change", (event) => {
+        state.theme = event.target.value;
+        document.documentElement.dataset.theme = state.theme;
+      });
+
+      document.getElementById("horizonInput").addEventListener("input", (event) => {
+        const nextHorizon = Number(event.target.value);
+        state.horizonHours = Number.isFinite(nextHorizon) && nextHorizon > 0 ? nextHorizon : 1;
+        validateProfileBindings();
+      });
+
+      document.getElementById("exportJsonButton").addEventListener("click", exportJson);
+      document.getElementById("importJsonButton").addEventListener("click", importJsonFromText);
+
+      updateLocalization();
+      renderTable();
+      exportJson();
+    }
+
+    document.addEventListener("DOMContentLoaded", initialize);
+    window.PowerSimProfileBinding = {
+      PROFILE_BINDABLE_TYPES,
+      PROFILE_TYPES_BY_ASSET_TYPE,
+      REGISTRY_TOTAL_REFERENCE_MW,
+      assetType,
+      buildExportModel,
+      demoAssetRegistry2026,
+      isProfileBindableAsset,
+      normalizeImportedAsset,
+      normalizeRegistryAsset,
+      profileOptionsForAsset,
+      registryInstalledCapacityTotal,
+      state,
+      validateProfileBindings,
+    };
+  </script>
+</body>
+</html>
