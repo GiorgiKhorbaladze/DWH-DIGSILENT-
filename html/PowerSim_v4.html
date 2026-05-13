@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PowerSim v4.0 — Maintenance Calendar</title>
+  <style>
+    :root{--bg:#f7fafc;--card:#fff;--text:#13202f;--muted:#667085;--line:#d0d5dd;--accent:#0b6bcb;--danger:#b42318;--warn:#b54708}
+    [data-theme="dark"]{--bg:#101828;--card:#1d2939;--text:#f2f4f7;--muted:#98a2b3;--line:#344054;--accent:#53b1fd}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+    header{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card);border-bottom:1px solid var(--line)}
+    .tabs,.actions{display:flex;gap:6px;flex-wrap:wrap}.tab,.btn{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:7px 10px;cursor:pointer}.tab.active,.btn.primary{background:var(--accent);border-color:var(--accent);color:white}
+    main{padding:14px}.pane{display:none}.pane.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:10px}.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}.field{display:flex;flex-direction:column;gap:4px}.field label{font-size:12px;color:var(--muted)}
+    input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:8px;background:var(--card);color:var(--text)}textarea{min-height:36px}table{width:100%;border-collapse:collapse;font-size:13px}th,td{border-bottom:1px solid var(--line);padding:8px;text-align:left}th{color:var(--muted)}.warn{color:var(--warn)}.err{color:var(--danger)}.muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+<header>
+  <div><strong>⚡ PowerSim v4.0</strong></div>
+  <nav class="tabs" aria-label="PowerSim tabs">
+    <button class="tab active" data-tab="assets" onclick="showTab('assets')" data-i18n="Assets">სადგურები</button>
+    <button class="tab" data-tab="maintenance" onclick="showTab('maintenance')" data-i18n="Maintenance">რემონტი / Maintenance</button>
+    <button class="tab" data-tab="validate" onclick="showTab('validate')" data-i18n="Validate">ვალიდაცია</button>
+    <button class="tab" data-tab="results" onclick="showTab('results')" data-i18n="Results">შედეგები</button>
+  </nav>
+  <div class="actions">
+    <select id="theme" onchange="setTheme(this.value)" aria-label="Theme"><option value="light">Light</option><option value="dark">Dark</option></select>
+    <button class="btn" onclick="setLanguage('ka')">ქართული</button><button class="btn" onclick="setLanguage('en')">English</button>
+  </div>
+</header>
+<main>
+  <section id="pane-assets" class="pane active">
+    <div class="card">
+      <h2 data-i18n="Assets">სადგურები</h2>
+      <div class="grid">
+        <div class="field"><label>ID</label><input id="asset-id" value="enguri_hpp"></div>
+        <div class="field"><label data-i18n="Name">სახელი</label><input id="asset-name" value="Enguri HPP"></div>
+        <div class="field"><label>Pmax MW</label><input id="asset-pmax" type="number" min="0" value="1300"></div>
+        <div class="field"><label>&nbsp;</label><button class="btn primary" onclick="addAsset()" data-i18n="Add asset">სადგურის დამატება</button></div>
+      </div>
+      <div id="asset-table"></div>
+    </div>
+  </section>
+
+  <section id="pane-maintenance" class="pane">
+    <div class="card">
+      <h2 data-i18n="Maintenance">რემონტი / Maintenance</h2>
+      <div class="grid">
+        <div class="field"><label data-i18n="Filter by station">სადგურით ფილტრი</label><select id="maint-filter" onchange="renderMaintenance()"></select></div>
+        <div class="field"><label data-i18n="Station">სადგური</label><select id="maint-asset"></select></div>
+        <div class="field"><label data-i18n="Start">დასაწყისი</label><input id="maint-start" type="datetime-local" value="2026-04-01T00:00"></div>
+        <div class="field"><label data-i18n="End">დასასრული</label><input id="maint-end" type="datetime-local" value="2026-04-10T23:00"></div>
+        <div class="field"><label data-i18n="Event type">ტიპი</label><select id="maint-type"><option value="planned_maintenance" data-i18n="Planned maintenance">გეგმური რემონტი</option><option value="forced_outage" data-i18n="Forced outage">ავარიული გათიშვა</option><option value="partial_derating" data-i18n="Partial derating">ნაწილობრივი შეზღუდვა</option></select></div>
+        <div class="field"><label data-i18n="Available MW">ხელმისაწვდომი MW</label><input id="maint-mw" type="number" min="0" step="0.001" placeholder="0"></div>
+        <div class="field"><label>availability_factor</label><input id="maint-factor" type="number" min="0" max="1" step="0.001" placeholder="0..1"></div>
+        <div class="field"><label data-i18n="Note">კომენტარი</label><textarea id="maint-note" placeholder="Unit maintenance"></textarea></div>
+      </div>
+      <div class="actions" style="margin-top:10px">
+        <button class="btn primary" onclick="saveMaintenanceEvent()" id="maint-save" data-i18n="Add event">ღონისძიების დამატება</button>
+        <button class="btn" onclick="resetMaintenanceForm()" data-i18n="Clear">გასუფთავება</button>
+      </div>
+    </div>
+    <div class="card"><h3 data-i18n="Maintenance events">რემონტის ღონისძიებები</h3><div id="maintenance-table"></div></div>
+  </section>
+
+  <section id="pane-validate" class="pane">
+    <div class="card">
+      <h2 data-i18n="Validate">ვალიდაცია</h2>
+      <div class="actions"><button class="btn primary" onclick="runValidation()" data-i18n="Run validation">ვალიდაციის გაშვება</button><button class="btn" onclick="exportInputJSON()">⬇ Export Input JSON</button><label class="btn">Import Input JSON<input type="file" accept=".json" hidden onchange="importInputJSON(this)"></label></div>
+      <div id="validation-report" class="muted" style="margin-top:10px">—</div>
+      <pre id="json-preview"></pre>
+    </div>
+  </section>
+  <section id="pane-results" class="pane"><div class="card"><h2 data-i18n="Results">შედეგები</h2><div id="chart-placeholder" class="muted">Chart rendering area remains reserved for imported solver results.</div></div></section>
+</main>
+<script>
+'use strict';
+const SCHEMA_VERSION = '1.4';
+const ACCEPTED_OUTPUT_SCHEMAS = new Set(['1.4','1.3','1.2','1.1','1.0']);
+const STATE = {assets: [], maintenance: [], editingMaintenanceId: null, horizon: {start:'2026-01-01T00:00:00', end:'2026-12-31T23:00:00'}};
+const I18N = {
+  Assets:{ka:'სადგურები',en:'Assets'}, Maintenance:{ka:'რემონტი / Maintenance',en:'Maintenance'}, Validate:{ka:'ვალიდაცია',en:'Validate'}, Results:{ka:'შედეგები',en:'Results'}, Name:{ka:'სახელი',en:'Name'}, 'Add asset':{ka:'სადგურის დამატება',en:'Add asset'}, Station:{ka:'სადგური',en:'Station'}, 'Filter by station':{ka:'სადგურით ფილტრი',en:'Filter by station'}, Start:{ka:'დასაწყისი',en:'Start'}, End:{ka:'დასასრული',en:'End'}, 'Event type':{ka:'ტიპი',en:'Event type'}, 'Planned maintenance':{ka:'გეგმური რემონტი',en:'Planned maintenance'}, 'Forced outage':{ka:'ავარიული გათიშვა',en:'Forced outage'}, 'Partial derating':{ka:'ნაწილობრივი შეზღუდვა',en:'Partial derating'}, 'Available MW':{ka:'ხელმისაწვდომი MW',en:'Available MW'}, Note:{ka:'კომენტარი',en:'Note'}, 'Add event':{ka:'ღონისძიების დამატება',en:'Add event'}, 'Update event':{ka:'ღონისძიების განახლება',en:'Update event'}, Clear:{ka:'გასუფთავება',en:'Clear'}, 'Maintenance events':{ka:'რემონტის ღონისძიებები',en:'Maintenance events'}, 'Run validation':{ka:'ვალიდაციის გაშვება',en:'Run validation'}, Edit:{ka:'რედაქტირება',en:'Edit'}, Delete:{ka:'წაშლა',en:'Delete'}, All:{ka:'ყველა',en:'All'}
+};
+let CURRENT_LANG = 'ka';
+function t(key){return (I18N[key] && I18N[key][CURRENT_LANG]) || key;}
+function setLanguage(lang){CURRENT_LANG=lang;document.documentElement.lang=lang;document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});renderAll();}
+function setTheme(theme){document.documentElement.dataset.theme=theme;}
+function showTab(tab){document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));document.getElementById(`pane-${tab}`).classList.add('active');}
+function addAsset(){const id=document.getElementById('asset-id').value.trim();const pmax=Number(document.getElementById('asset-pmax').value);if(!id||!Number.isFinite(pmax)||pmax<0)return alert('Invalid asset');const existing=STATE.assets.find(a=>a.id===id);const asset={id,name:document.getElementById('asset-name').value.trim()||id,pmax_mw:pmax};if(existing)Object.assign(existing,asset);else STATE.assets.push(asset);renderAll();}
+function renderAssets(){document.getElementById('asset-table').innerHTML=`<table><thead><tr><th>ID</th><th>${t('Name')}</th><th>Pmax MW</th></tr></thead><tbody>${STATE.assets.map(a=>`<tr><td>${escapeHtml(a.id)}</td><td>${escapeHtml(a.name||a.id)}</td><td>${Number(a.pmax_mw||0).toFixed(3)}</td></tr>`).join('')}</tbody></table>`;}
+function renderMaintenanceSelectors(){const opts=STATE.assets.map(a=>`<option value="${escapeAttr(a.id)}">${escapeHtml(a.name||a.id)}</option>`).join('');document.getElementById('maint-asset').innerHTML=opts;document.getElementById('maint-filter').innerHTML=`<option value="">${t('All')}</option>${opts}`;}
+function saveMaintenanceEvent(){const event={id:STATE.editingMaintenanceId||`maint_${Date.now()}`,asset_id:document.getElementById('maint-asset').value,start:normalizeDateTime(document.getElementById('maint-start').value),end:normalizeDateTime(document.getElementById('maint-end').value),event_type:document.getElementById('maint-type').value,available_capacity_mw:nullableNumber(document.getElementById('maint-mw').value),availability_factor:nullableNumber(document.getElementById('maint-factor').value),note:document.getElementById('maint-note').value.trim()};const issues=validateMaintenance([event]).errors;if(issues.length)return alert(issues.join('\n'));const idx=STATE.maintenance.findIndex(e=>e.id===event.id);if(idx>=0)STATE.maintenance[idx]=event;else STATE.maintenance.push(event);resetMaintenanceForm();renderMaintenance();}
+function editMaintenance(id){const e=STATE.maintenance.find(x=>x.id===id);if(!e)return;STATE.editingMaintenanceId=id;document.getElementById('maint-asset').value=e.asset_id;document.getElementById('maint-start').value=(e.start||'').slice(0,16);document.getElementById('maint-end').value=(e.end||'').slice(0,16);document.getElementById('maint-type').value=e.event_type;document.getElementById('maint-mw').value=e.available_capacity_mw??'';document.getElementById('maint-factor').value=e.availability_factor??'';document.getElementById('maint-note').value=e.note||'';document.getElementById('maint-save').textContent=t('Update event');}
+function deleteMaintenance(id){STATE.maintenance=STATE.maintenance.filter(e=>e.id!==id);renderMaintenance();}
+function resetMaintenanceForm(){STATE.editingMaintenanceId=null;document.getElementById('maint-mw').value='';document.getElementById('maint-factor').value='';document.getElementById('maint-note').value='';document.getElementById('maint-save').textContent=t('Add event');}
+function renderMaintenance(){const filter=document.getElementById('maint-filter').value;const rows=STATE.maintenance.filter(e=>!filter||e.asset_id===filter);document.getElementById('maintenance-table').innerHTML=`<table><thead><tr><th>${t('Station')}</th><th>${t('Start')}</th><th>${t('End')}</th><th>${t('Event type')}</th><th>${t('Available MW')}</th><th>availability_factor</th><th>${t('Note')}</th><th></th></tr></thead><tbody>${rows.map(e=>`<tr><td>${escapeHtml(e.asset_id)}</td><td>${escapeHtml(e.start)}</td><td>${escapeHtml(e.end)}</td><td>${escapeHtml(t(eventTypeLabel(e.event_type)))}</td><td>${e.available_capacity_mw??''}</td><td>${e.availability_factor??''}</td><td>${escapeHtml(e.note||'')}</td><td><button class="btn" onclick="editMaintenance('${escapeAttr(e.id)}')">${t('Edit')}</button> <button class="btn" onclick="deleteMaintenance('${escapeAttr(e.id)}')">${t('Delete')}</button></td></tr>`).join('')}</tbody></table>`;}
+function eventTypeLabel(type){return ({planned_maintenance:'Planned maintenance',forced_outage:'Forced outage',partial_derating:'Partial derating'})[type]||type;}
+function validateMaintenance(events=STATE.maintenance){const errors=[],warnings=[],byAsset={};const assetIds=new Set(STATE.assets.map(a=>a.id));for(const [i,e] of events.entries()){const p=`maintenance[${i}]`;const asset=STATE.assets.find(a=>a.id===e.asset_id);const start=new Date(e.start);const end=new Date(e.end);if(!e.asset_id)errors.push(`${p}: missing asset_id`);else if(!assetIds.has(e.asset_id))errors.push(`${p}: asset_id does not exist`);if(!(start<end))errors.push(`${p}: start must be before end`);if(e.available_capacity_mw!=null){if(e.available_capacity_mw<0)errors.push(`${p}: available_capacity_mw must be >= 0`);if(asset&&e.available_capacity_mw>Number(asset.pmax_mw))errors.push(`${p}: available_capacity_mw > pmax`);}if(e.availability_factor!=null&&(e.availability_factor<0||e.availability_factor>1))errors.push(`${p}: availability_factor must be between 0 and 1`);if(e.event_type==='partial_derating'&&e.available_capacity_mw==null&&e.availability_factor==null)warnings.push(`${p}: partial derating missing available MW/factor`);if(start>=new Date(STATE.horizon.end)||end<=new Date(STATE.horizon.start))warnings.push(`${p}: outside selected horizon`);if(e.asset_id)(byAsset[e.asset_id] ||= []).push({...e,start,end,index:i});}for(const list of Object.values(byAsset)){list.sort((a,b)=>a.start-b.start);for(let i=1;i<list.length;i++)if(list[i].start<list[i-1].end)warnings.push(`maintenance[${list[i-1].index}] overlaps maintenance[${list[i].index}] for ${list[i].asset_id}`);}return {errors,warnings};}
+function buildInputJSON(){return {metadata:{schema_version:SCHEMA_VERSION,model_version:'PowerSim v4.0'},assets:STATE.assets,maintenance:STATE.maintenance.map(({id,...e})=>e),study_horizon:STATE.horizon};}
+function exportInputJSON(){const data=buildInputJSON();download('powersim_input.json',JSON.stringify(data,null,2));document.getElementById('json-preview').textContent=JSON.stringify(data,null,2);}
+function importInputJSON(input){const file=input.files&&input.files[0];if(!file)return;file.text().then(text=>{const data=JSON.parse(text);STATE.assets=Array.isArray(data.assets)?data.assets:[];STATE.maintenance=Array.isArray(data.maintenance)?data.maintenance.map((e,i)=>({id:e.id||`imported_${i}`,...e})):[];STATE.horizon=data.study_horizon||STATE.horizon;renderAll();runValidation();input.value='';});}
+function runValidation(){const {errors,warnings}=validateMaintenance();document.getElementById('validation-report').innerHTML=[...errors.map(e=>`<div class="err">✖ ${escapeHtml(e)}</div>`),...warnings.map(w=>`<div class="warn">⚠ ${escapeHtml(w)}</div>`),errors.length||warnings.length?'':'✅ OK'].join('');document.getElementById('json-preview').textContent=JSON.stringify(buildInputJSON(),null,2);}
+function renderAll(){renderAssets();renderMaintenanceSelectors();renderMaintenance();}
+function normalizeDateTime(value){return value&&value.length===16?`${value}:00`:value;}
+function nullableNumber(value){return value===''||value==null?null:Number(value);}
+function download(name,text){const blob=new Blob([text],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();URL.revokeObjectURL(a.href);}
+function escapeHtml(value){return String(value??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function escapeAttr(value){return escapeHtml(value).replace(/'/g,'&#39;');}
+STATE.assets.push({id:'enguri_hpp',name:'Enguri HPP',pmax_mw:1300});renderAll();setLanguage(CURRENT_LANG);
+</script>
+</body>
+</html>
